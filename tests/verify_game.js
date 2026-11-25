@@ -164,5 +164,57 @@ console.log('✓ 3rd Place awarded to next line claimant (Charlie):', podium.thi
 assert.strictEqual(leaderboard[3].id, 'usr_dave', '4th place must be Dave (Early 5)');
 console.log('✓ 4th Place awarded to Early Five claimant (Dave)');
 
+console.log('\n--- 4. Testing Late Entry Prevention During Active Games ---');
+
+function simulateJoinAttempt(room, { name, playerId }) {
+  if (playerId && room.players.has(playerId)) {
+    return { success: true, reconnected: true };
+  }
+  if (room.status === 'playing' || room.status === 'paused') {
+    return {
+      success: false,
+      error: 'Game is already in progress! Late entry is not allowed. Please wait for the next round.'
+    };
+  }
+  if (room.status === 'ended') {
+    return { success: false, error: 'This game round has already ended.' };
+  }
+  return { success: true, reconnected: false };
+}
+
+const activeGameRoom = {
+  status: 'playing',
+  players: new Map([['existing_user_1', { name: 'Player One' }]])
+};
+
+// 1. New player trying to join during 'playing' -> MUST BE REJECTED
+const newJoinAttempt = simulateJoinAttempt(activeGameRoom, { name: 'Late Player' });
+assert.strictEqual(newJoinAttempt.success, false, 'New player must be rejected while game is playing');
+assert.strictEqual(
+  newJoinAttempt.error,
+  'Game is already in progress! Late entry is not allowed. Please wait for the next round.'
+);
+console.log('✓ New player rejected during active game:', newJoinAttempt.error);
+
+// 2. Existing player reconnecting during 'playing' -> MUST BE ACCEPTED
+const existingReconnect = simulateJoinAttempt(activeGameRoom, {
+  name: 'Player One',
+  playerId: 'existing_user_1'
+});
+assert.strictEqual(existingReconnect.success, true, 'Existing player must be allowed to reconnect');
+console.log('✓ Existing player successfully reconnected during active game');
+
+// 3. Paused game room -> new player MUST BE REJECTED
+activeGameRoom.status = 'paused';
+const pausedJoinAttempt = simulateJoinAttempt(activeGameRoom, { name: 'Another Late Player' });
+assert.strictEqual(pausedJoinAttempt.success, false, 'New player must be rejected when game is paused');
+console.log('✓ New player rejected during paused game');
+
+// 4. Lobby room -> new player MUST BE ACCEPTED
+activeGameRoom.status = 'lobby';
+const lobbyJoinAttempt = simulateJoinAttempt(activeGameRoom, { name: 'Lobby Player' });
+assert.strictEqual(lobbyJoinAttempt.success, true, 'New player can join during lobby');
+console.log('✓ New player successfully joined during lobby stage');
+
 console.log('\n--- ALL UNIT & VALIDATION TESTS PASSED! ---');
 

@@ -202,7 +202,8 @@ app.get('/api/room/:code', (req, res) => {
     code: room.code,
     status: room.status,
     playerCount: room.players.size,
-    requiresPassKey: Boolean(room.passKey)
+    requiresPassKey: Boolean(room.passKey),
+    isLocked: room.status !== 'lobby'
   });
 });
 
@@ -384,8 +385,16 @@ io.on('connection', (socket) => {
         if (name) player.name = name.trim();
         if (email) player.email = email.trim();
       } else {
+        // Prevent new players from entering middle of an active or ended game
+        if (room.status === 'playing' || room.status === 'paused') {
+          return callback?.({
+            error: 'Game is already in progress! Late entry is not allowed. Please wait for the next round.'
+          });
+        }
         if (room.status === 'ended') {
-          return callback?.({ error: 'This game has already ended.' });
+          return callback?.({
+            error: 'This game round has already ended. Please ask the host to start a new round or join another room.'
+          });
         }
 
         playerId = `usr_${Math.random().toString(36).substring(2, 9)}`;
