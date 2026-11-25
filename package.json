@@ -4,10 +4,11 @@
   "description": "Modern responsive multiplayer Tambola (Housie/Bingo) web app",
   "main": "server/server.js",
   "scripts": {
+    "postinstall": "npm --prefix client install",
+    "build": "npm --prefix client install && npm --prefix client run build",
+    "start": "node server/server.js",
     "server": "node server/server.js",
     "client": "npm --prefix client run dev",
-    "build": "npm --prefix client run build",
-    "start": "node server/server.js",
     "dev": "node server/server.js",
     "free-port": "npx -y kill-port 3001"
   },
