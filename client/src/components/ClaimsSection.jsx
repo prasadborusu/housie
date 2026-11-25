@@ -12,7 +12,7 @@ export default function ClaimsSection({
 }) {
   // Helper to check user eligibility based on player's marked numbers
   const checkClaimProgress = (type) => {
-    if (!ticket || !ticket.grid) return { ready: false, progress: '0', count: 0, total: 5 };
+    if (!ticket || !ticket.grid) return { ready: false, progress: '0/5', count: 0, total: 5 };
 
     if (type === 'early_five') {
       const markedCount = ticket.numbers.filter((n) => manualDaubs.has(n)).length;
@@ -62,50 +62,15 @@ export default function ClaimsSection({
         total: 15
       };
     }
-    return { ready: false, progress: '', count: 0, total: 5 };
+    return { ready: false, progress: '0/5', count: 0, total: 5 };
   };
 
   const claimCategories = [
-    {
-      id: 'early_five',
-      name: 'Early Five',
-      badge: '⚡ Early 5',
-      desc: 'First to strike any 5 numbers',
-      icon: Zap,
-      accent: 'from-amber-500 to-orange-500'
-    },
-    {
-      id: 'top_line',
-      name: 'Top Line',
-      badge: '🥇 Top Line',
-      desc: 'Strike all 5 in top row',
-      icon: Award,
-      accent: 'from-blue-600 to-indigo-600'
-    },
-    {
-      id: 'middle_line',
-      name: 'Middle Line',
-      badge: '🥈 Mid Line',
-      desc: 'Strike all 5 in mid row',
-      icon: Award,
-      accent: 'from-teal-600 to-emerald-600'
-    },
-    {
-      id: 'bottom_line',
-      name: 'Bottom Line',
-      badge: '🥉 Bottom Line',
-      desc: 'Strike all 5 in bot row',
-      icon: Award,
-      accent: 'from-purple-600 to-pink-600'
-    },
-    {
-      id: 'full_house',
-      name: 'Full House',
-      badge: '👑 Full House',
-      desc: 'Strike all 15 numbers!',
-      icon: Crown,
-      accent: 'from-amber-400 via-amber-500 to-yellow-600'
-    }
+    { id: 'early_five', name: 'Early 5', fullName: 'Early Five', desc: 'Any 5 numbers', icon: Zap },
+    { id: 'top_line', name: 'Top Line', fullName: 'Top Line', desc: 'Row 1 complete', icon: Award },
+    { id: 'middle_line', name: 'Mid Line', fullName: 'Middle Line', desc: 'Row 2 complete', icon: Award },
+    { id: 'bottom_line', name: 'Bot Line', fullName: 'Bottom Line', desc: 'Row 3 complete', icon: Award },
+    { id: 'full_house', name: 'Full House', fullName: 'Full House', desc: 'All 15 numbers', icon: Crown }
   ];
 
   const handleClaimClick = (catId) => {
@@ -114,30 +79,22 @@ export default function ClaimsSection({
   };
 
   return (
-    <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-xl border border-slate-200">
-      <div className="flex items-center justify-between mb-4 pb-3.5 border-b border-slate-100">
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center shadow-xs">
-            <Trophy className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-black text-slate-900 text-base">
-              Winning Claims
-            </h3>
-            <p className="text-xs text-slate-500 font-medium">
-              Strike numbers on your card & claim instantly
-            </p>
-          </div>
+    <div className="bg-white rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-md border border-slate-200">
+      <div className="flex items-center justify-between mb-2.5 sm:mb-3 pb-2 border-b border-slate-100">
+        <div className="flex items-center gap-2">
+          <Trophy className="w-4 h-4 text-amber-500" />
+          <h3 className="font-black text-slate-900 text-xs sm:text-sm">
+            Winning Claims
+          </h3>
         </div>
-
-        <span className="text-xs font-black text-slate-700 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
-          {Object.keys(claims).length} / 5 Claimed
+        <span className="text-[10px] sm:text-xs font-black text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
+          {Object.keys(claims).length} / 5 Won
         </span>
       </div>
 
-      {/* Grid of Claim Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
-        {claimCategories.map((cat) => {
+      {/* Grid: 2 columns on mobile, 5 columns on desktop */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
+        {claimCategories.map((cat, idx) => {
           const claimRecord = claims[cat.id];
           const isClaimed = Boolean(claimRecord);
           const isMeWinner = claimRecord?.winnerId === playerId;
@@ -145,30 +102,32 @@ export default function ClaimsSection({
           const Icon = cat.icon;
           const percent = Math.min(100, Math.round((count / total) * 100));
 
+          // Full House on mobile spans full width of 2 columns
+          const isFullHouseSpan = cat.id === 'full_house' ? 'col-span-2 sm:col-span-1' : '';
+
           return (
             <div
               key={cat.id}
-              className={`rounded-2xl p-4 border transition-all duration-300 flex flex-col justify-between ${
+              className={`rounded-xl sm:rounded-2xl p-2.5 sm:p-3 border transition-all flex flex-col justify-between ${isFullHouseSpan} ${
                 isClaimed
                   ? isMeWinner
-                    ? 'bg-emerald-50/90 border-emerald-400 ring-2 ring-emerald-300 shadow-sm'
-                    : 'bg-slate-50/70 border-slate-200 opacity-90'
+                    ? 'bg-emerald-50/90 border-emerald-300 ring-1 ring-emerald-300'
+                    : 'bg-slate-50 border-slate-200 opacity-80'
                   : ready
-                  ? 'bg-gradient-to-b from-amber-50/90 to-amber-100/60 border-amber-400 ring-2 ring-amber-400/60 shadow-md animate-pulse-glow'
-                  : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs'
+                  ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-400/50 shadow-sm animate-pulse-glow'
+                  : 'bg-white border-slate-200 hover:border-slate-300'
               }`}
             >
               <div>
-                {/* Header */}
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-                    <Icon className="w-4 h-4 text-emerald-600" />
-                    {cat.name}
+                <div className="flex items-center justify-between gap-1 mb-1">
+                  <span className="text-[11px] sm:text-xs font-black text-slate-900 flex items-center gap-1 truncate">
+                    <Icon className="w-3 h-3 text-emerald-600 shrink-0" />
+                    <span className="truncate">{cat.name}</span>
                   </span>
                   <span
-                    className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                    className={`text-[9px] sm:text-[10px] font-black px-1.5 py-0.2 rounded-md shrink-0 ${
                       ready
-                        ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
+                        ? 'bg-amber-400 text-slate-950 font-black'
                         : 'bg-slate-100 text-slate-600'
                     }`}
                   >
@@ -176,13 +135,9 @@ export default function ClaimsSection({
                   </span>
                 </div>
 
-                <p className="text-[11px] text-slate-500 line-clamp-2 leading-tight mb-3 font-medium">
-                  {cat.desc}
-                </p>
-
-                {/* Progress bar inside card */}
+                {/* Compact Progress bar */}
                 {!isClaimed && (
-                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mb-3">
+                  <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden mb-2">
                     <div
                       className={`h-full transition-all duration-300 rounded-full ${
                         ready ? 'bg-amber-500' : 'bg-emerald-500'
@@ -193,38 +148,28 @@ export default function ClaimsSection({
                 )}
               </div>
 
-              {/* Status or Claim Button */}
+              {/* Action / Winner Status */}
               <div>
                 {isClaimed ? (
-                  <div className="mt-1 pt-2.5 border-t border-slate-200/80 text-center">
-                    <div className="flex items-center justify-center gap-1 text-xs font-black text-slate-900">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                      <span className="truncate max-w-[120px]">
-                        {isMeWinner ? 'Won by You!' : claimRecord.winnerName}
+                  <div className="text-center pt-1 border-t border-slate-100">
+                    <div className="flex items-center justify-center gap-1 text-[10px] sm:text-xs font-black text-slate-800 truncate">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                      <span className="truncate max-w-[90px]">
+                        {isMeWinner ? 'You Won!' : claimRecord.winnerName}
                       </span>
                     </div>
-                    <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">
-                      At call #{claimRecord.totalNumbersCalled || '---'} (No. {claimRecord.wonAtNumber})
-                    </span>
                   </div>
                 ) : (
                   <button
                     onClick={() => handleClaimClick(cat.id)}
                     disabled={isClaiming}
-                    className={`w-full py-2.5 px-3 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-sm ${
+                    className={`w-full py-1.5 sm:py-2 px-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black transition cursor-pointer active:scale-95 ${
                       ready
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black shadow-md shadow-emerald-600/30 ring-2 ring-emerald-300'
-                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold'
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm ring-1 ring-emerald-300'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                     }`}
                   >
-                    {ready ? (
-                      <>
-                        <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-current" />
-                        <span>Claim Prize!</span>
-                      </>
-                    ) : (
-                      <span>Claim</span>
-                    )}
+                    {ready ? 'Claim!' : 'Claim'}
                   </button>
                 )}
               </div>
