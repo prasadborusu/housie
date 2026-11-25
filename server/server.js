@@ -717,6 +717,25 @@ io.on('connection', (socket) => {
     callback?.({ success: true });
   });
 
+  // 16. LIVE EMOJI REACTIONS (BROADCASTS TO ALL PLAYERS FOR 2-3 SECONDS)
+  socket.on('send_reaction', ({ emoji }) => {
+    if (!currentRoomCode || !currentPlayerId) return;
+    const room = rooms.get(currentRoomCode);
+    if (!room) return;
+    const player = room.players.get(currentPlayerId);
+    if (!player) return;
+
+    const reactionPayload = {
+      id: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      emoji: (emoji || '🎉').slice(0, 4),
+      senderName: player.name,
+      senderId: player.id,
+      timestamp: Date.now()
+    };
+
+    io.to(room.code).emit('room_reaction', reactionPayload);
+  });
+
   // DISCONNECT
   socket.on('disconnect', () => {
     if (currentRoomCode && currentPlayerId) {

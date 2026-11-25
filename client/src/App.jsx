@@ -12,6 +12,7 @@ import ResultsScreen from './components/ResultsScreen';
 import AdminPage from './components/AdminPage';
 import LeaveModal from './components/LeaveModal';
 import Toast from './components/Toast';
+import EmojiReactions from './components/EmojiReactions';
 
 export default function App() {
   // Navigation Screens: 'welcome' | 'room_code' | 'lobby' | 'live_game' | 'results' | 'admin'
@@ -435,6 +436,15 @@ export default function App() {
 
       {/* Toast Alert Stack */}
       <Toast toasts={toasts} onDismiss={dismissToast} />
+
+      {/* Real-time Emoji Reactions Button & Floating Overlay */}
+      {roomCode && playerId && (currentScreen === 'lobby' || currentScreen === 'live_game' || currentScreen === 'results') && (
+        <EmojiReactions
+          roomCode={roomCode}
+          playerId={playerId}
+          playerName={playerDetails.name}
+        />
+      )}
     </div>
   );
 }
