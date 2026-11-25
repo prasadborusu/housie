@@ -135,6 +135,41 @@ export default function LiveGameScreen({
         </div>
       </div>
 
+      {/* Live Tasks Progress Bar (Auto-ends when all 5 tasks complete) */}
+      <div className="bg-white rounded-xl sm:rounded-2xl px-3 py-2 border border-slate-200/90 shadow-xs flex items-center justify-between gap-2 select-none">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-[11px] sm:text-xs font-black text-slate-800">
+            Tasks:
+          </span>
+          <span className="text-[10px] sm:text-xs font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+            {Object.keys(roomState?.claims || {}).length} / 5 Claimed
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-bold">
+          <span className={roomState?.claims?.early_five ? 'text-emerald-700 font-black' : 'text-slate-400'}>
+            E5 {roomState?.claims?.early_five ? '✓' : '○'}
+          </span>
+          <span className="text-slate-300">•</span>
+          <span className={roomState?.claims?.top_line ? 'text-emerald-700 font-black' : 'text-slate-400'}>
+            Top {roomState?.claims?.top_line ? '✓' : '○'}
+          </span>
+          <span className="text-slate-300">•</span>
+          <span className={roomState?.claims?.middle_line ? 'text-emerald-700 font-black' : 'text-slate-400'}>
+            Mid {roomState?.claims?.middle_line ? '✓' : '○'}
+          </span>
+          <span className="text-slate-300">•</span>
+          <span className={roomState?.claims?.bottom_line ? 'text-emerald-700 font-black' : 'text-slate-400'}>
+            Bot {roomState?.claims?.bottom_line ? '✓' : '○'}
+          </span>
+          <span className="text-slate-300">•</span>
+          <span className={roomState?.claims?.full_house ? 'text-amber-600 font-black' : 'text-slate-400'}>
+            👑 {roomState?.claims?.full_house ? '✓' : '○'}
+          </span>
+        </div>
+      </div>
+
       {/* Host Controls Panel (Shown only to Host) */}
       {isHost && (
         <HostControls

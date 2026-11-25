@@ -1,6 +1,6 @@
 const assert = require('assert');
 const { generateTambolaTicket } = require('../server/ticketGenerator');
-const { validateClaim, CLAIM_TYPES } = require('../server/claims');
+const { validateClaim, CLAIM_TYPES, calculateLeaderboard } = require('../server/claims');
 
 console.log('--- 1. Testing Tambola Ticket Generator (100 sample tickets) ---');
 
@@ -104,6 +104,65 @@ console.log('✓ Bogus Full House rejected:', resFullBogus.reason);
 const resFullValid = validateClaim(CLAIM_TYPES.FULL_HOUSE, sampleTicket, allNumbers);
 assert.strictEqual(resFullValid.valid, true, 'Full House with all 15 numbers must be accepted');
 console.log('✓ Valid Full House accepted');
+
+console.log('\n--- 3. Testing Official Ranking & Podium Calculation (calculateLeaderboard) ---');
+
+const mockPlayers = new Map();
+mockPlayers.set('usr_alice', {
+  id: 'usr_alice',
+  name: 'Alice',
+  ticket: generateTambolaTicket('alice_ticket')
+});
+mockPlayers.set('usr_bob', {
+  id: 'usr_bob',
+  name: 'Bob',
+  ticket: generateTambolaTicket('bob_ticket')
+});
+mockPlayers.set('usr_charlie', {
+  id: 'usr_charlie',
+  name: 'Charlie',
+  ticket: generateTambolaTicket('charlie_ticket')
+});
+mockPlayers.set('usr_dave', {
+  id: 'usr_dave',
+  name: 'Dave',
+  ticket: generateTambolaTicket('dave_ticket')
+});
+
+const mockClaims = {
+  [CLAIM_TYPES.FULL_HOUSE]: { winnerId: 'usr_alice', winnerName: 'Alice', name: 'Full House', badge: '👑 Full House' },
+  [CLAIM_TYPES.TOP_LINE]: { winnerId: 'usr_bob', winnerName: 'Bob', name: 'Top Line', badge: '🥇 Top Line' },
+  [CLAIM_TYPES.BOTTOM_LINE]: { winnerId: 'usr_bob', winnerName: 'Bob', name: 'Bottom Line', badge: '🥉 Bottom Line' },
+  [CLAIM_TYPES.MIDDLE_LINE]: { winnerId: 'usr_charlie', winnerName: 'Charlie', name: 'Middle Line', badge: '🥈 Mid Line' },
+  [CLAIM_TYPES.EARLY_FIVE]: { winnerId: 'usr_dave', winnerName: 'Dave', name: 'Early Five', badge: '⚡ Early 5' }
+};
+
+const mockRoom = {
+  players: mockPlayers,
+  claims: mockClaims,
+  calledNumbers: [1, 5, 10, 15, 20, 25, 30, 35, 40]
+};
+
+const { podium, leaderboard } = calculateLeaderboard(mockRoom);
+
+// 1st Place MUST be Alice (claimed Full House / Housie)
+assert.strictEqual(podium.first.id, 'usr_alice', '1st place must be Full House claimant (Alice)');
+assert.strictEqual(podium.first.hasFullHouse, true);
+console.log('✓ 1st Place awarded to Full House winner (Alice):', podium.first.placeTitle);
+
+// 2nd Place MUST be Bob (claimed majority of lines: 2 lines)
+assert.strictEqual(podium.second.id, 'usr_bob', '2nd place must be majority lines claimant (Bob)');
+assert.strictEqual(podium.second.linesWon, 2, 'Bob won 2 lines (majority)');
+console.log('✓ 2nd Place awarded to majority lines winner (Bob, 2 lines):', podium.second.placeTitle);
+
+// 3rd Place MUST be Charlie (claimed 1 line)
+assert.strictEqual(podium.third.id, 'usr_charlie', '3rd place must be Charlie (1 line won)');
+assert.strictEqual(podium.third.linesWon, 1);
+console.log('✓ 3rd Place awarded to next line claimant (Charlie):', podium.third.placeTitle);
+
+// 4th Place MUST be Dave (Early Five)
+assert.strictEqual(leaderboard[3].id, 'usr_dave', '4th place must be Dave (Early 5)');
+console.log('✓ 4th Place awarded to Early Five claimant (Dave)');
 
 console.log('\n--- ALL UNIT & VALIDATION TESTS PASSED! ---');
 

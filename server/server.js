@@ -5,7 +5,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const { generateTambolaTicket } = require('./ticketGenerator');
-const { CLAIM_TYPES, CLAIM_METADATA, validateClaim } = require('./claims');
+const { CLAIM_TYPES, CLAIM_METADATA, validateClaim, calculateLeaderboard } = require('./claims');
 const {
   isSupabaseConfigured,
   syncRoom,
@@ -83,6 +83,11 @@ function getPublicRoomState(room, forPlayerId = null) {
     lastNumbers: room.calledNumbers.slice(-5).reverse(),
     claims: room.claims,
     claimMetadata: CLAIM_METADATA,
+    completedTasksCount: Object.keys(room.claims || {}).length,
+    totalTasksCount: 5,
+    allTasksCompleted: Boolean(room.allTasksCompleted || Object.keys(room.claims || {}).length >= 5),
+    leaderboard: room.leaderboard || (room.status === 'ended' ? calculateLeaderboard(room).leaderboard : null),
+    podium: room.podium || (room.status === 'ended' ? calculateLeaderboard(room).podium : null),
     autoCallInterval: room.autoCallInterval,
     isAutoCalling: room.isAutoCalling,
     players: playersList,
@@ -117,10 +122,16 @@ function callNextNumber(room) {
   if (room.numberPool.length === 0) {
     stopAutoCaller(room);
     room.status = 'ended';
+    const { podium, leaderboard } = calculateLeaderboard(room);
+    room.podium = podium;
+    room.leaderboard = leaderboard;
+
     io.to(room.code).emit('game_ended', {
       reason: 'All 90 numbers have been called!',
       calledNumbers: room.calledNumbers,
-      claims: room.claims
+      claims: room.claims,
+      podium,
+      leaderboard
     });
     broadcastRoomUpdate(room);
     syncRoom(room);
@@ -530,10 +541,16 @@ io.on('connection', (socket) => {
 
     stopAutoCaller(room);
     room.status = 'ended';
+    const { podium, leaderboard } = calculateLeaderboard(room);
+    room.podium = podium;
+    room.leaderboard = leaderboard;
+
     io.to(room.code).emit('game_ended', {
       reason: 'Game ended by Host/Admin',
       calledNumbers: room.calledNumbers,
-      claims: room.claims
+      claims: room.claims,
+      podium,
+      leaderboard
     });
 
     broadcastRoomUpdate(room);
@@ -552,6 +569,9 @@ io.on('connection', (socket) => {
     room.calledNumbers = [];
     room.currentNumber = null;
     room.claims = {};
+    delete room.podium;
+    delete room.leaderboard;
+    delete room.allTasksCompleted;
 
     for (const player of room.players.values()) {
       player.ticket = generateTambolaTicket();
@@ -609,6 +629,35 @@ io.on('connection', (socket) => {
       winnerId: player.id,
       isFullHouse
     });
+
+    // Check if all 5 prize tasks are completed
+    const ALL_REQUIRED_CLAIMS = [
+      CLAIM_TYPES.EARLY_FIVE,
+      CLAIM_TYPES.TOP_LINE,
+      CLAIM_TYPES.MIDDLE_LINE,
+      CLAIM_TYPES.BOTTOM_LINE,
+      CLAIM_TYPES.FULL_HOUSE
+    ];
+    const completedTasksCount = ALL_REQUIRED_CLAIMS.filter(type => Boolean(room.claims[type])).length;
+    const allTasksCompleted = completedTasksCount === ALL_REQUIRED_CLAIMS.length;
+
+    if (allTasksCompleted) {
+      stopAutoCaller(room);
+      room.status = 'ended';
+      room.allTasksCompleted = true;
+      const { podium, leaderboard } = calculateLeaderboard(room);
+      room.podium = podium;
+      room.leaderboard = leaderboard;
+
+      io.to(room.code).emit('game_ended', {
+        reason: 'All game tasks completed! Finalizing Grand Results... 🎉',
+        calledNumbers: room.calledNumbers,
+        claims: room.claims,
+        podium,
+        leaderboard,
+        allTasksCompleted: true
+      });
+    }
 
     broadcastRoomUpdate(room);
     syncRoom(room);
