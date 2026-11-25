@@ -137,6 +137,11 @@ class SoundManager {
     }
   }
 
+  // Play win fanfare (alias for celebration)
+  playWin() {
+    this.playFanfare();
+  }
+
   // Play error buzzer for rejected claims
   playError() {
     if (this.isMuted) return;

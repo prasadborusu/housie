@@ -156,8 +156,16 @@ export default function App() {
     });
 
     // 5. Game Ended
-    socket.on('game_ended', ({ reason }) => {
+    socket.on('game_ended', ({ reason, podium, leaderboard, claims, calledNumbers }) => {
       addToast(reason || 'The Tambola game has ended!', 'info', 'Game Complete');
+      setRoomState((prev) => ({
+        ...(prev || {}),
+        status: 'ended',
+        podium: podium || prev?.podium,
+        leaderboard: leaderboard || prev?.leaderboard,
+        claims: claims || prev?.claims,
+        calledNumbers: calledNumbers || prev?.calledNumbers
+      }));
       setCurrentScreen('results');
     });
 

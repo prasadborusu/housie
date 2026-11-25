@@ -27,7 +27,13 @@ export default function ResultsScreen({
 
   // Trigger celebration confetti & victory fanfare on mount
   useEffect(() => {
-    sounds.playWin();
+    try {
+      if (sounds && typeof sounds.playFanfare === 'function') {
+        sounds.playFanfare();
+      }
+    } catch {
+      // Ignore audio errors
+    }
 
     try {
       // Golden champion confetti shower
@@ -434,23 +440,25 @@ export default function ResultsScreen({
 
 // Fallback client-side calculation if server did not attach podium
 function computeClientLeaderboard(roomState) {
-  if (!roomState || !roomState.players) return [];
+  if (!roomState) return [];
+  const players = Array.isArray(roomState.players) ? roomState.players : [];
+  if (players.length === 0) return [];
   const claims = roomState.claims || {};
   const calledSet = new Set(roomState.calledNumbers || []);
   const lineTypes = ['top_line', 'middle_line', 'bottom_line'];
 
-  const stats = roomState.players.map((p) => {
-    const ticketNumbers = p.ticket?.numbers || [];
+  const stats = players.map((p) => {
+    const ticketNumbers = p?.ticket?.numbers || [];
     const struckCount = ticketNumbers.filter((n) => calledSet.has(n)).length;
-    const wonClaims = Object.values(claims).filter((c) => c.winnerId === p.id);
-    const hasFullHouse = Boolean(claims.full_house && claims.full_house.winnerId === p.id);
-    const linesWon = lineTypes.filter((t) => claims[t] && claims[t].winnerId === p.id).length;
-    const hasEarlyFive = Boolean(claims.early_five && claims.early_five.winnerId === p.id);
-    const badges = wonClaims.map((c) => c.badge || c.name);
+    const wonClaims = Object.values(claims).filter((c) => c && c.winnerId === p?.id);
+    const hasFullHouse = Boolean(claims.full_house && claims.full_house.winnerId === p?.id);
+    const linesWon = lineTypes.filter((t) => claims[t] && claims[t].winnerId === p?.id).length;
+    const hasEarlyFive = Boolean(claims.early_five && claims.early_five.winnerId === p?.id);
+    const badges = wonClaims.map((c) => c?.badge || c?.name || 'Winner');
 
     return {
-      id: p.id,
-      name: p.name,
+      id: p?.id || Math.random().toString(),
+      name: p?.name || 'Player',
       hasFullHouse,
       linesWon,
       hasEarlyFive,

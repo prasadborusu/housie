@@ -216,5 +216,23 @@ const lobbyJoinAttempt = simulateJoinAttempt(activeGameRoom, { name: 'Lobby Play
 assert.strictEqual(lobbyJoinAttempt.success, true, 'New player can join during lobby');
 console.log('✓ New player successfully joined during lobby stage');
 
+console.log('\n--- 5. Testing Game Auto-End on Full House Claim ---');
+function checkGameShouldEnd(claimType, currentClaims) {
+  const isFullHouse = claimType === CLAIM_TYPES.FULL_HOUSE;
+  const ALL_REQUIRED_CLAIMS = [
+    CLAIM_TYPES.EARLY_FIVE,
+    CLAIM_TYPES.TOP_LINE,
+    CLAIM_TYPES.MIDDLE_LINE,
+    CLAIM_TYPES.BOTTOM_LINE,
+    CLAIM_TYPES.FULL_HOUSE
+  ];
+  const allTasksCompleted = ALL_REQUIRED_CLAIMS.every(type => Boolean(currentClaims[type]) || type === claimType);
+  return isFullHouse || allTasksCompleted;
+}
+
+assert.strictEqual(checkGameShouldEnd(CLAIM_TYPES.FULL_HOUSE, {}), true, 'Full House must immediately trigger game end');
+assert.strictEqual(checkGameShouldEnd(CLAIM_TYPES.TOP_LINE, {}), false, 'Top Line alone should not end game');
+console.log('✓ Full House immediately ends the game round and transitions to results');
+
 console.log('\n--- ALL UNIT & VALIDATION TESTS PASSED! ---');
 

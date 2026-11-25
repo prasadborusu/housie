@@ -639,7 +639,7 @@ io.on('connection', (socket) => {
       isFullHouse
     });
 
-    // Check if all 5 prize tasks are completed
+    // Check if Full House is claimed OR all 5 prize tasks are completed
     const ALL_REQUIRED_CLAIMS = [
       CLAIM_TYPES.EARLY_FIVE,
       CLAIM_TYPES.TOP_LINE,
@@ -650,7 +650,7 @@ io.on('connection', (socket) => {
     const completedTasksCount = ALL_REQUIRED_CLAIMS.filter(type => Boolean(room.claims[type])).length;
     const allTasksCompleted = completedTasksCount === ALL_REQUIRED_CLAIMS.length;
 
-    if (allTasksCompleted) {
+    if (isFullHouse || allTasksCompleted) {
       stopAutoCaller(room);
       room.status = 'ended';
       room.allTasksCompleted = true;
@@ -659,7 +659,7 @@ io.on('connection', (socket) => {
       room.leaderboard = leaderboard;
 
       io.to(room.code).emit('game_ended', {
-        reason: 'All game tasks completed! Finalizing Grand Results... 🎉',
+        reason: isFullHouse ? `Full House (Housie) claimed by ${player.name}! 👑` : 'All game tasks completed! Finalizing Grand Results... 🎉',
         calledNumbers: room.calledNumbers,
         claims: room.claims,
         podium,
