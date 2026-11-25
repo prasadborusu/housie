@@ -207,6 +207,15 @@ export default function App() {
     setIsLoading(true);
     setJoinError('');
 
+    let resolved = false;
+    const timeoutTimer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        setIsLoading(false);
+        setJoinError('Server connection timed out. Please check your backend connection.');
+      }
+    }, 4000);
+
     socket.emit('join_room', {
       roomCode: code,
       name: playerDetails.name,
@@ -214,6 +223,9 @@ export default function App() {
       passKey: passKey || null,
       playerId: playerId
     }, (res) => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timeoutTimer);
       setIsLoading(false);
       if (res && res.success) {
         setRoomCode(res.roomCode);
