@@ -152,14 +152,20 @@ function callNextNumber(room) {
   broadcastRoomUpdate(room);
   syncRoom(room);
 
-  // If this was number 90, end the game
+  // If this was the last number (number 90), end the game
   if (room.numberPool.length === 0) {
     stopAutoCaller(room);
     room.status = 'ended';
+    const { podium, leaderboard } = calculateLeaderboard(room);
+    room.podium = podium;
+    room.leaderboard = leaderboard;
+
     io.to(room.code).emit('game_ended', {
       reason: 'All 90 numbers have been called!',
       calledNumbers: room.calledNumbers,
-      claims: room.claims
+      claims: room.claims,
+      podium,
+      leaderboard
     });
     broadcastRoomUpdate(room);
     syncRoom(room);
@@ -598,85 +604,104 @@ io.on('connection', (socket) => {
 
   // 14. CLAIM WINNING PRIZE (SECURE SERVER-SIDE VALIDATION)
   socket.on('claim_prize', ({ claimType }, callback) => {
-    const room = rooms.get(currentRoomCode);
-    if (!room) return callback?.({ error: 'Room not found' });
-    if (room.status !== 'playing' && room.status !== 'paused') {
-      return callback?.({ error: 'Claims can only be made while the game is live!' });
-    }
+    try {
+      const room = rooms.get(currentRoomCode);
+      if (!room) return callback?.({ error: 'Room not found' });
+      if (room.status !== 'playing' && room.status !== 'paused') {
+        return callback?.({ error: 'Claims can only be made while the game is live!' });
+      }
 
-    const player = room.players.get(currentPlayerId);
-    if (!player) return callback?.({ error: 'Player record not found' });
+      const player = room.players.get(currentPlayerId);
+      if (!player) return callback?.({ error: 'Player record not found' });
 
-    const result = validateClaim(claimType, player.ticket, room.calledNumbers, room.claims);
+      const result = validateClaim(claimType, player.ticket, room.calledNumbers, room.claims);
 
-    if (!result.valid) {
-      return callback?.({
+      if (!result.valid) {
+        return callback?.({
+          success: false,
+          error: result.reason || 'Invalid claim. Please re-check your ticket numbers!'
+        });
+      }
+
+      const claimMeta = CLAIM_METADATA[claimType];
+      const claimRecord = {
+        type: claimType,
+        name: claimMeta.name,
+        badge: claimMeta.badge,
+        winnerId: player.id,
+        winnerName: player.name,
+        wonAtNumber: room.currentNumber,
+        totalNumbersCalled: room.calledNumbers.length,
+        timestamp: new Date().toISOString()
+      };
+
+      room.claims[claimType] = claimRecord;
+
+      const isFullHouse = claimType === CLAIM_TYPES.FULL_HOUSE;
+
+      io.to(room.code).emit('claim_awarded', {
+        claim: claimRecord,
+        winnerName: player.name,
+        winnerId: player.id,
+        isFullHouse
+      });
+
+      // Check if Full House is claimed OR all 5 prize tasks are completed
+      const ALL_REQUIRED_CLAIMS = [
+        CLAIM_TYPES.EARLY_FIVE,
+        CLAIM_TYPES.TOP_LINE,
+        CLAIM_TYPES.MIDDLE_LINE,
+        CLAIM_TYPES.BOTTOM_LINE,
+        CLAIM_TYPES.FULL_HOUSE
+      ];
+      const completedTasksCount = ALL_REQUIRED_CLAIMS.filter(type => Boolean(room.claims[type])).length;
+      const allTasksCompleted = completedTasksCount === ALL_REQUIRED_CLAIMS.length;
+
+      if (isFullHouse || allTasksCompleted) {
+        stopAutoCaller(room);
+        room.status = 'ended';
+        room.allTasksCompleted = true;
+
+        let podium = null;
+        let leaderboard = [];
+        try {
+          const result = calculateLeaderboard(room);
+          podium = result.podium;
+          leaderboard = result.leaderboard;
+        } catch (err) {
+          console.error('Error calculating leaderboard:', err);
+          podium = { first: null, second: null, third: null };
+          leaderboard = [];
+        }
+        room.podium = podium;
+        room.leaderboard = leaderboard;
+
+        io.to(room.code).emit('game_ended', {
+          reason: isFullHouse ? `Full House (Housie) claimed by ${player.name}! 👑` : 'All game tasks completed! Finalizing Grand Results... 🎉',
+          calledNumbers: room.calledNumbers,
+          claims: room.claims,
+          podium,
+          leaderboard,
+          allTasksCompleted: true
+        });
+      }
+
+      broadcastRoomUpdate(room);
+      syncRoom(room);
+      syncClaim(room.code, claimRecord);
+
+      callback?.({
+        success: true,
+        message: `Congratulations! Your ${claimMeta.name} claim is verified and awarded! 🎉`,
+        claim: claimRecord
+      });
+    } catch (err) {
+      console.error('Error processing claim:', err);
+      callback?.({
         success: false,
-        error: result.reason || 'Invalid claim. Please re-check your ticket numbers!'
+        error: 'An unexpected error occurred while processing your claim. Please try again.'
       });
     }
-
-    const claimMeta = CLAIM_METADATA[claimType];
-    const claimRecord = {
-      type: claimType,
-      name: claimMeta.name,
-      badge: claimMeta.badge,
-      winnerId: player.id,
-      winnerName: player.name,
-      wonAtNumber: room.currentNumber,
-      totalNumbersCalled: room.calledNumbers.length,
-      timestamp: new Date().toISOString()
-    };
-
-    room.claims[claimType] = claimRecord;
-
-    const isFullHouse = claimType === CLAIM_TYPES.FULL_HOUSE;
-
-    io.to(room.code).emit('claim_awarded', {
-      claim: claimRecord,
-      winnerName: player.name,
-      winnerId: player.id,
-      isFullHouse
-    });
-
-    // Check if Full House is claimed OR all 5 prize tasks are completed
-    const ALL_REQUIRED_CLAIMS = [
-      CLAIM_TYPES.EARLY_FIVE,
-      CLAIM_TYPES.TOP_LINE,
-      CLAIM_TYPES.MIDDLE_LINE,
-      CLAIM_TYPES.BOTTOM_LINE,
-      CLAIM_TYPES.FULL_HOUSE
-    ];
-    const completedTasksCount = ALL_REQUIRED_CLAIMS.filter(type => Boolean(room.claims[type])).length;
-    const allTasksCompleted = completedTasksCount === ALL_REQUIRED_CLAIMS.length;
-
-    if (isFullHouse || allTasksCompleted) {
-      stopAutoCaller(room);
-      room.status = 'ended';
-      room.allTasksCompleted = true;
-      const { podium, leaderboard } = calculateLeaderboard(room);
-      room.podium = podium;
-      room.leaderboard = leaderboard;
-
-      io.to(room.code).emit('game_ended', {
-        reason: isFullHouse ? `Full House (Housie) claimed by ${player.name}! 👑` : 'All game tasks completed! Finalizing Grand Results... 🎉',
-        calledNumbers: room.calledNumbers,
-        claims: room.claims,
-        podium,
-        leaderboard,
-        allTasksCompleted: true
-      });
-    }
-
-    broadcastRoomUpdate(room);
-    syncRoom(room);
-    syncClaim(room.code, claimRecord);
-
-    callback?.({
-      success: true,
-      message: `Congratulations! Your ${claimMeta.name} claim is verified and awarded! 🎉`,
-      claim: claimRecord
-    });
   });
 
   // 15. LEAVE ROOM

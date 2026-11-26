@@ -22,6 +22,19 @@ export default function ResultsScreen({
   onPlayAgain,
   onExitHome
 }) {
+  // Guard: if roomState is not ready yet, show a loading placeholder
+  if (!roomState) {
+    return (
+      <div className="max-w-4xl mx-auto px-3 sm:px-6 py-10 text-center">
+        <div className="bg-white rounded-3xl p-8 shadow-lg border border-slate-200">
+          <Sparkles className="w-8 h-8 text-amber-500 mx-auto mb-3 animate-pulse" />
+          <h2 className="text-xl font-black text-slate-900 mb-2">Calculating Results...</h2>
+          <p className="text-sm text-slate-500">Please wait while we finalize the standings.</p>
+        </div>
+      </div>
+    );
+  }
+
   const claims = roomState?.claims || {};
   const claimKeys = ['early_five', 'top_line', 'middle_line', 'bottom_line', 'full_house'];
 
@@ -66,8 +79,15 @@ export default function ResultsScreen({
   }, []);
 
   // Use server-provided podium & leaderboard or compute fallback
-  const podium = roomState?.podium || computeClientPodium(roomState);
-  const leaderboard = roomState?.leaderboard || computeClientLeaderboard(roomState);
+  let podium, leaderboard;
+  try {
+    podium = roomState?.podium || computeClientPodium(roomState);
+    leaderboard = roomState?.leaderboard || computeClientLeaderboard(roomState);
+  } catch (err) {
+    console.error('Error computing results:', err);
+    podium = { first: null, second: null, third: null };
+    leaderboard = [];
+  }
 
   const claimTitles = {
     early_five: { name: 'Early Five', badge: '⚡ Early 5', desc: 'First 5 numbers' },
@@ -448,6 +468,7 @@ function computeClientLeaderboard(roomState) {
   const lineTypes = ['top_line', 'middle_line', 'bottom_line'];
 
   const stats = players.map((p) => {
+    if (!p) return null;
     const ticketNumbers = p?.ticket?.numbers || [];
     const struckCount = ticketNumbers.filter((n) => calledSet.has(n)).length;
     const wonClaims = Object.values(claims).filter((c) => c && c.winnerId === p?.id);
@@ -466,7 +487,7 @@ function computeClientLeaderboard(roomState) {
       badges,
       struckCount
     };
-  });
+  }).filter(Boolean);
 
   // Full house winner always first
   stats.sort((a, b) => {
