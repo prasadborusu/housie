@@ -75,26 +75,6 @@ export default function Navbar({
           </div>
         </div>
 
-        {/* Center: Room Code pill if inside room */}
-        {roomCode && (
-          <div className="flex items-center gap-2 bg-amber-50/80 border border-amber-200/60 rounded-full px-3 py-1 text-xs">
-            <span className="text-amber-800 font-medium">Room:</span>
-            <button
-              onClick={handleCopyCode}
-              title="Click to copy room code"
-              className="flex items-center gap-1 font-mono font-bold text-slate-900 hover:text-emerald-700 transition"
-            >
-              {roomCode}
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600" />}
-            </button>
-            {playerCount !== undefined && (
-              <span className="flex items-center gap-1 text-slate-500 pl-1 border-l border-amber-200">
-                <Users className="w-3 h-3 text-emerald-600" />
-                {playerCount}
-              </span>
-            )}
-          </div>
-        )}
 
         {/* Right action controls */}
         <div className="flex items-center gap-1.5 sm:gap-2">
